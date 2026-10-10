@@ -1,0 +1,41 @@
+camera:
+  # Source options:
+  # - "synthetic" (Built-in nighttime simulation)
+  # - 0 (Built-in/USB webcam)
+  # - "http://192.168.43.1:8080/video" (Smartphone IP Webcam stream)
+  # - "path/to/video.mp4" (Recorded test footage)
+  source: "http://192.168.43.1:8080/video"
+  width: 1280
+  height: 720
+  fps: 30
+
+gps:
+  # Mode options: 'phone', 'mock', or 'serial'
+  mode: "phone"
+  phone_sensors_url: "http://192.168.43.1:8080/sensors.json"
+  udp_port: 50000
+  serial_port: "/dev/ttyUSB0"
+  baudrate: 9600
+  mock_track_path: "data/mock_tracks/sample_route.gpx"
+
+
+detection:
+  model_path: "yolov8n.pt"
+  confidence_threshold: 0.35
+  iou_threshold: 0.45
+  # Photometric threshold for determining if streetlight is ON or OFF (0-255 in V-channel)
+  luminance_threshold: 180
+
+tracker:
+  track_thresh: 0.25
+  track_buffer: 30
+  match_thresh: 0.8
+
+geo:
+  # Minimum distance (meters) between logged faulty lamps to avoid duplicates
+  deduplication_radius_meters: 15.0
+
+storage:
+  db_path: "data/outputs/inspections.db"
+  geojson_path: "data/outputs/faulty_lamps.geojson"
+  snapshots_dir: "data/snapshots"

@@ -1,0 +1,24 @@
+# Computer Vision & Machine Learning
+opencv-python>=4.8.0
+ultralytics>=8.3.0
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+
+# GPS & Geospatial
+pyserial>=3.5
+pynmea2>=1.19.0
+geopy>=2.4.0
+shapely>=2.0.0
+gpxpy>=1.6.0
+
+# Storage & Configuration
+pydantic>=2.5.0
+pyyaml>=6.0.1
+
+# Mapping & Visualization
+folium>=0.17.0
+matplotlib>=3.8.0
+
+# GUI Application
+PySide6>=6.6.0
