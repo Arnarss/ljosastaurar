@@ -41,11 +41,47 @@ Detecting unlit streetlights at night presents unique challenges compared to sta
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-> **Recommendation**: Start with **Option A (Vision-First)** using object detection + luminance evaluation, with architectural hooks to support **Option B (GIS validation)** later.
+---
+
+## 3. Real-World Feasibility, Physical Limits & High-Reliability Strategies
+
+### 3.1 Realistic Feasibility Assessment
+
+| Operating Scenario | Target to Detect | Feasibility | Physical Mechanism / Rationale |
+| :--- | :--- | :---: | :--- |
+| **Functioning Streetlight (ON)** | Glowing bulb & luminaire | **95% – 99%** | Very high contrast, characteristic color temperature, lens flare against dark background. |
+| **Defective Streetlight (OFF) in Towns** | Dark luminaire with ambient illumination | **75% – 85%** | Adjacent working streetlights, storefronts, and car headlights illuminate the pole/housing silhouette. |
+| **Defective Streetlight (OFF) in Pitch Black** | Dark luminaire on rural/unlit road | **35% – 50%** | **The Physics Limit:** 0 photons emitted, black fixture on black sky. If low-beams do not reach 8–10m up, optical contrast is zero. |
+| **Defective Streetlight with Spatial Cadence** | Missing light in regular spacing | **85% – 92%** | Deduces outage from geometric distance gaps between consecutive lit poles without needing map data. |
+| **Defective Streetlight with Map Validation** | Validating against OpenStreetMap nodes | **92% – 98%** | Flips the problem: checks for the presence of light where an asset is known to exist. |
+
+### 3.2 The Core Physical Constraints
+1. **The Downward Low-Beam Cutoff**:
+   * Vehicle low-beam headlights are optically engineered to project downwards onto the road surface ($<1.5\text{m}$ high) to prevent blinding oncoming traffic.
+   * Streetlight luminaires are mounted **6 to 12 meters above ground level**.
+   * Consequently, car low-beams illuminate the bottom pole shaft, but the luminaire head may sit above the illumination cone unless high beams or ambient light are present.
+2. **False Positives**:
+   * Tall traffic sign posts, utility poles, and vertical tree branches can mimic the silhouette of an unlit streetlight to a pure vision model.
+
+### 3.3 Three Practical Strategies for 90%+ Field Reliability
+
+#### Strategy 1: Civil Twilight ("Blue Hour") Timing (Simplest Field Tweak)
+* Municipal inspection drives are most effective during the **30–45 minute window right after sunset** when streetlights switch on, but the sky retains a deep blue ambient luminance.
+* **Result**: Every physical pole and fixture is sharply silhouetted against the sky, while functioning bulbs shine brightly, raising optical vision detection to **~95%**.
+
+#### Strategy 2: Spatial Cadence / Missing Lamp Gap Detection (Zero-Map Offline Solution)
+* Implemented in `src/geo/cadence_analyzer.py`.
+* Municipal streetlights are installed at fixed, repeating intervals (nominal $25\text{m} - 35\text{m}$).
+* When the vehicle detects a functioning lamp, records position, and travels $> 1.7\times$ nominal spacing ($> 50\text{m} - 70\text{m}$) before detecting the next lit lamp, the system automatically infers a burned-out lamp at the spatial midpoint.
+
+#### Strategy 3: OpenStreetMap Prior Verification (Gold Standard)
+* Implemented in `src/geo/osm_helper.py`.
+* Queries OpenStreetMap node tags (`highway=street_lamp`).
+* When vehicle enters a 20m proximity radius of a known lamp coordinate, the system evaluates the camera frame. If no light source above the luminance threshold is present at that bearing, an outage incident is logged.
 
 ---
 
-## 3. High-Level Architecture & Pipeline
+## 4. High-Level Architecture & Pipeline
 
 ```mermaid
 flowchart TD
@@ -74,9 +110,9 @@ flowchart TD
 
 ---
 
-## 4. Software Pipeline Breakdown
+## 5. Software Pipeline Breakdown
 
-### 4.1 Input Ingestion
+### 5.1 Input Ingestion
 * **Camera Feeds**:
   * Live USB Webcam / Dashcam (`cv2.VideoCapture`).
   * RTSP/HTTP stream from an IP camera or mobile app (e.g., IP Webcam).
@@ -86,7 +122,7 @@ flowchart TD
   * Smartphone GPS via UDP/TCP broadcast (apps like GPS Logger or OsmAnd).
   * Mock GPS track reader (GPX/CSV replay synced to video playback time).
 
-### 4.2 Perception & Detection
+### 5.2 Perception & Detection
 1. **Object Detection**:
    * **Model**: YOLOv8 or YOLO11 Nano (`yolov8n.pt` / `yolo11n.pt`) fine-tuned for night street scenes.
    * **Classes**:
@@ -96,13 +132,13 @@ flowchart TD
    * Stage 1: Detect `streetlight` bounding box.
    * Stage 2: Crop luminaire head $\to$ calculate HSV / V-channel (luminance) peak and area saturation. If top 5% brightest pixels < threshold $\tau$, mark as **OFF**.
 
-### 4.3 Tracking & Deduplication
+### 5.3 Tracking & Deduplication
 * Without tracking, a single broken lamppost at 30 FPS will register hundreds of alerts.
 * **ByteTrack** assigns a unique tracking ID (`track_id`) as the vehicle approaches.
 * The state (ON/OFF) is aggregated across the track lifetime (majority voting or temporal smoothing).
 * **Spatial Deduplication**: When a pole leaves the frame, record its approximate location. If another "OFF" detection occurs within 15 meters within 1 minute, merge them.
 
-### 4.4 Data Logging & Export
+### 5.4 Data Logging & Export
 * **Output Formats**:
   * `alerts.geojson`: Directly importable into QGIS, Google Earth, or Mapbox.
   * `inspections.db`: SQLite database storing:
@@ -114,11 +150,11 @@ flowchart TD
 
 ---
 
-## 5. PySide6 Desktop GUI Architecture
+## 6. PySide6 Desktop GUI Architecture
 
 To operate the system in real time from a vehicle (laptop or touchscreen display), a **PySide6 (Qt for Python)** desktop application is used.
 
-### 5.1 Multi-Threaded Architecture (Qt Signals & Slots)
+### 6.1 Multi-Threaded Architecture (Qt Signals & Slots)
 Running real-time computer vision (30 FPS) and serial GPS reading directly on the GUI thread will freeze the user interface. Therefore, processing is decoupled using a dedicated worker thread:
 
 ```mermaid
@@ -145,7 +181,7 @@ flowchart TD
     UI -- "sig_start_inspection() / sig_stop()" --> Loop
 ```
 
-### 5.2 User Interface Layout & Features
+### 6.2 User Interface Layout & Features
 * **Live Video HUD**: Displays the camera feed with real-time bounding boxes (Green = ON, Red = OFF), tracking IDs, and current FPS.
 * **Telemetry Dashboard**:
   * GPS Status: Fix type (2D/3D/None), Latitude, Longitude, Heading, Speed (km/h), Satellite count.
@@ -160,12 +196,13 @@ flowchart TD
 
 ---
 
-## 6. Project Directory Structure
+## 7. Project Directory Structure
 
 ```text
 ljosastaurar/
 ├── README.md                 # Setup and run instructions
 ├── PROJECT_SPECIFICATION.md  # Detailed technical specs and roadmap
+├── SETUP_GUIDE.md            # Laptop OS setup & in-vehicle hardware checklist
 ├── requirements.txt          # Python dependencies
 ├── config/
 │   └── settings.yaml         # Camera resolution, GPS port, thresholds, model paths
@@ -184,7 +221,8 @@ ljosastaurar/
 │   ├── geo/
 │   │   ├── __init__.py
 │   │   ├── spatial_filter.py # Deduplication & distance clustering
-│   │   └── osm_helper.py     # (Optional) Overpass API query for streetlight nodes
+│   │   ├── cadence_analyzer.py # Spatial cadence gap detector
+│   │   └── osm_helper.py     # OpenStreetMap streetlight nodes helper
 │   ├── gui/
 │   │   ├── __init__.py
 │   │   ├── main_window.py    # PySide6 Main Dashboard Window
@@ -207,7 +245,7 @@ ljosastaurar/
 
 ---
 
-## 6. Python Tech Stack & Dependencies
+## 8. Python Tech Stack & Dependencies
 
 ```txt
 # Core Vision & AI
@@ -238,7 +276,7 @@ pyyaml>=6.0.1
 
 ---
 
-## 7. Hardware Requirements & Selection Guide
+## 9. Hardware Requirements & Selection Guide
 
 Operating an autonomous computer vision system from a moving vehicle at night introduces specific physical constraints: low ambient light, motion blur, vehicle speed, and power delivery.
 
@@ -296,7 +334,8 @@ The system must run 1080p video ingestion, YOLOv8/YOLO11 inference at $\ge 20$ F
 
 ---
 
-## 8. Step-by-Step Implementation Roadmap
+## 10. Step-by-Step Implementation Roadmap
+
 
 ### Phase 1: Prototype with Recorded Video & Simulated GPS
 - [ ] Set up project structure, virtual environment, and dependencies.

@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# PyTorch / Models
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# Local Data & Outputs
+data/snapshots/*
+!data/snapshots/.gitkeep
+data/outputs/*
+!data/outputs/.gitkeep
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

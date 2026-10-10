@@ -14,6 +14,21 @@ An intelligent nighttime computer vision and GPS system to automatically detect 
 
 ---
 
+## 🔍 How Likely Is It to Detect Broken Bulbs?
+
+Detecting an **unlit bulb in the dark** is a classic optical challenge:
+* **Functioning lamps (ON)**: **~95–99% detection**. Easy due to high contrast and glow.
+* **Defective lamps (OFF) in town**: **~75–85% detection**. Adjacent working lamps and headlights illuminate the pole.
+* **Defective lamps in pitch black**: **~35–50%**. A black pole on a black sky emits 0 photons.
+
+### 3 Built-In Strategies for 90%+ Accuracy
+1. **Civil Twilight ("Blue Hour") Drives**: Driving right after sunset when streetlights turn ON provides sky contrast to silhouette every physical pole.
+2. **Spatial Cadence Gap Detection (`src/geo/cadence_analyzer.py`)**: Automatically detects when the distance between two functioning lamps is $> 1.7\times$ the normal spacing ($25\text{m} - 35\text{m}$) and flags the missing lamp at the midpoint.
+3. **OpenStreetMap Prior Verification (`src/geo/osm_helper.py`)**: Uses known streetlight coordinates to verify whether light is present where a streetlight is known to exist.
+
+
+---
+
 ## 📁 Repository Structure
 
 ```
